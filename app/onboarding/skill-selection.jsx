@@ -60,10 +60,10 @@ const SkillSelection = () => {
     if (selectedSkills.includes(skillId)) {
       setSelectedSkills(selectedSkills.filter((id) => id !== skillId));
     } else {
-      if (selectedSkills.length < 10) {
+      if (selectedSkills.length < 3) {
         setSelectedSkills([...selectedSkills, skillId]);
       } else {
-        Alert.alert('Limit Reached', 'You can select a maximum of 10 skills.');
+        Alert.alert('Limit Reached', 'You can select a maximum of 3 skills.');
       }
     }
   };
@@ -126,7 +126,7 @@ const SkillSelection = () => {
     }
   };
 
-  const skillsRemaining = 10 - selectedSkills.length;
+  const skillsRemaining = 3 - selectedSkills.length;
 
   const styles = StyleSheet.create({
     // Styles remain the same as in your original code
@@ -285,7 +285,7 @@ const SkillSelection = () => {
       )}
 
       {/* Selected Skills */}
-      <Text className="text-lg font-bold mb-3">Selected Skills ({selectedSkills.length}/10)</Text>
+      <Text className="text-lg font-bold mb-3">Selected Skills ({selectedSkills.length}/3)</Text>
       <View style={styles.selectedSkillsContainer}>
         {selectedSkills.map((skillId) => {
           const skill = skills.find((s) => s.id === skillId);

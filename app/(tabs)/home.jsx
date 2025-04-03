@@ -1,49 +1,114 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase'; // Assuming you have supabase client setup
 
 const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [barters, setBarters] = useState([]);
+  const [categories, setCategories] = useState(['All']);
   
-  // Sample data
-  const categories = ['All', 'Development', 'Design', 'Marketing', 'Writing'];
-  const barters = [
-    {
-      id: '1',
-      title: 'Web Development for Photography',
-      user: 'Sarah Johnson',
-      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-      skills: ['JavaScript', 'React'],
-      distance: '2.5 km away',
-      rating: 4.8,
-      posted: '2 hours ago'
-    },
-    {
-      id: '2',
-      title: 'Logo Design for Social Media',
-      user: 'Michael Chen',
-      avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-      skills: ['Illustrator', 'Branding'],
-      distance: '5.1 km away',
-      rating: 4.5,
-      posted: '1 day ago'
-    },
-    {
-      id: '3',
-      title: 'Content Writing for Tutoring',
-      user: 'David Wilson',
-      avatar: 'https://randomuser.me/api/portraits/men/67.jpg',
-      skills: ['Blogging', 'Editing'],
-      distance: '1.2 km away',
-      rating: 4.9,
-      posted: '3 days ago'
-    },
-  ];
+  // Fetch barters and categories on component mount
+  useEffect(() => {
+    fetchCategories();
+    fetchBarters();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('skills')
+        .select('name')
+        .order('name');
+
+      if (error) throw error;
+      
+      // Extract skill names and add 'All' category
+      const skillCategories = ['All', ...data.map(item => item.name)];
+      setCategories(skillCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+  
+  const fetchBarters = async () => {
+    try {
+      setRefreshing(true);
+  
+      // Query barters with correct references to auth.users
+      const { data: bartersData, error: bartersError } = await supabase
+        .from('barters')
+        .select(`
+          *,
+          teach_skill:teach_skill_id (name),
+          learn_skill:learn_skill_id (name)
+        `)
+        .order('created_at', { ascending: false });
+        
+      if (bartersError) throw bartersError;
+      
+      // Get corresponding user profiles from public.users 
+      const userIds = bartersData.map(barter => barter.user_id);
+      
+      // Get all users with the correct column names based on our discovered structure
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, username, email')
+        .in('id', userIds);
+        
+      if (usersError) throw usersError;
+      
+      // Create a lookup map for user data
+      const userMap = {};
+      usersData.forEach(user => {
+        userMap[user.id] = user;
+      });
+      
+      // Transform barters data with user information
+      const formattedBarters = bartersData.map(barter => {
+        const user = userMap[barter.user_id] || {};
+        return {
+          id: barter.id,
+          title: barter.title,
+          user: user.username || 'Anonymous User',
+          avatar: 'https://randomuser.me/api/portraits/lego/1.jpg', // Using default avatar
+          skills: [barter.teach_skill?.name || 'Unknown Skill'],
+          distance: barter.mode === 'offline' ? '5 km away' : 'Online',
+          rating: barter.skill_rating || 3,
+          posted: formatTimeAgo(barter.created_at),
+          wantedSkill: barter.learn_skill?.name || 'Unknown Skill'
+        };
+      });
+      
+      setBarters(formattedBarters);
+  
+    } catch (error) {
+      console.error('Error fetching barters:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  
+  // Helper function to format time ago
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date();
+    const createdAt = new Date(timestamp);
+    const diffInSeconds = Math.floor((now - createdAt) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + ' min ago';
+    if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + ' hours ago';
+    return Math.floor(diffInSeconds / 86400) + ' days ago';
+  };
+
+  // Filter barters based on selected category
+  const filteredBarters = activeCategory === 'All' 
+    ? barters 
+    : barters.filter(barter => barter.skills.includes(activeCategory) || barter.wantedSkill === activeCategory);
 
   const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    fetchBarters();
   };
 
   return (
@@ -88,48 +153,56 @@ const Home = () => {
           />
         }
       >
-        {barters.map((barter) => (
-          <TouchableOpacity 
-            key={barter.id} 
-            className="bg-white rounded-xl p-4 mb-4 shadow-sm"
-            onPress={() => console.log('Navigate to barter details')}
-          >
-            <View className="flex-row justify-between mb-2">
-              <Text className="font-bold text-lg text-gray-900">{barter.title}</Text>
-              <TouchableOpacity>
-                <Ionicons name="bookmark-outline" size={20} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
-            
-            <View className="flex-row items-center mb-3">
-              <Image
-                source={{ uri: barter.avatar }}
-                className="w-8 h-8 rounded-full mr-2"
-              />
-              <Text className="text-gray-700">{barter.user}</Text>
-              <View className="flex-row items-center ml-auto">
-                <Ionicons name="star" size={16} color="#f59e0b" />
-                <Text className="text-amber-600 ml-1">{barter.rating}</Text>
+        {filteredBarters.length === 0 ? (
+          <View className="flex-1 items-center justify-center py-8">
+            <Ionicons name="search" size={48} color="#d1d5db" />
+            <Text className="text-gray-500 text-lg mt-4">No barters found</Text>
+          </View>
+        ) : (
+          filteredBarters.map((barter) => (
+            <TouchableOpacity 
+              key={barter.id} 
+              className="bg-white rounded-xl p-4 mb-4 shadow-sm"
+              onPress={() => console.log('Navigate to barter details')}
+            >
+              <View className="flex-row justify-between mb-2">
+                <Text className="font-bold text-lg text-gray-900">{barter.title}</Text>
+                <TouchableOpacity>
+                  <Ionicons name="bookmark-outline" size={20} color="#9ca3af" />
+                </TouchableOpacity>
               </View>
-            </View>
-            
-            <View className="flex-row flex-wrap mb-3">
-              {barter.skills.map((skill, index) => (
-                <View key={index} className="bg-indigo-50 rounded-full px-3 py-1 mr-2 mb-2">
-                  <Text className="text-indigo-800 text-sm">{skill}</Text>
+              
+              <View className="flex-row items-center mb-3">
+                <Image
+                  source={{ uri: barter.avatar }}
+                  className="w-8 h-8 rounded-full mr-2"
+                />
+                <Text className="text-gray-700">{barter.user}</Text>
+                <View className="flex-row items-center ml-auto">
+                  <Ionicons name="star" size={16} color="#f59e0b" />
+                  <Text className="text-amber-600 ml-1">{barter.rating}</Text>
                 </View>
-              ))}
-            </View>
-            
-            <View className="flex-row justify-between">
-              <View className="flex-row items-center">
-                <Ionicons name="location-outline" size={16} color="#6b7280" />
-                <Text className="text-gray-500 ml-1 text-sm">{barter.distance}</Text>
               </View>
-              <Text className="text-gray-500 text-sm">{barter.posted}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+              
+              <View className="flex-row flex-wrap mb-3">
+                <View className="bg-indigo-50 rounded-full px-3 py-1 mr-2 mb-2">
+                  <Text className="text-indigo-800 text-sm">I can teach: {barter.skills[0]}</Text>
+                </View>
+                <View className="bg-amber-50 rounded-full px-3 py-1 mr-2 mb-2">
+                  <Text className="text-amber-800 text-sm">I want to learn: {barter.wantedSkill}</Text>
+                </View>
+              </View>
+              
+              <View className="flex-row justify-between">
+                <View className="flex-row items-center">
+                  <Ionicons name={barter.distance.includes('Online') ? 'wifi-outline' : 'location-outline'} size={16} color="#6b7280" />
+                  <Text className="text-gray-500 ml-1 text-sm">{barter.distance}</Text>
+                </View>
+                <Text className="text-gray-500 text-sm">{barter.posted}</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
   );
