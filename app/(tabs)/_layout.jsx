@@ -29,10 +29,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color }) => <Ionicons name="people" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="create"
         options={{
           title: 'Create',
           tabBarIcon: ({ color }) => <Ionicons name="add-circle" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="bookmark"
+        options={{
+          title: 'Bookmarks',
+          tabBarIcon: ({ color }) => <Ionicons name="bookmark" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -45,12 +59,6 @@ export default function TabLayout() {
       {/* These screens are not shown in tabs but are in the stack */}
       <Tabs.Screen
         name="barter-detail"
-        options={{
-          href: null, // This prevents the screen from showing in the tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="requests"
         options={{
           href: null, // This prevents the screen from showing in the tab bar
         }}

@@ -224,9 +224,9 @@ const Home = () => {
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-2xl font-bold text-gray-900">Discover Barters</Text>
           <View className="flex-row">
-            <TouchableOpacity className="mr-4" onPress={goToRequests}>
+            {/* <TouchableOpacity className="mr-4" onPress={goToRequests}>
               <Ionicons name="people-outline" size={24} color="#4f46e5" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity>
               <Ionicons name="search-outline" size={24} color="#4f46e5" />
             </TouchableOpacity>
